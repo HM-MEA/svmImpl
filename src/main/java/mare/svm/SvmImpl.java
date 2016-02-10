@@ -7,15 +7,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Consumer;
 
 public class SvmImpl {
 
-    final int C = Integer.MAX_VALUE;
+    final int C = 1000;
     final int n;
     final double[] xx;
     final double[] yy;
     final int[] tt;
     double[] aa;
+
+    int count = 0;
+
+    private Consumer<String> imageGenerate;
 
     public SvmImpl(List<Data> dataList) {
         this.xx = dataList.stream().mapToDouble(d -> d.x).toArray();
@@ -26,9 +31,13 @@ public class SvmImpl {
         Arrays.fill(aa, 0);
     }
 
+    public void setImageGenerate(Consumer<String> imageGenerate) {
+        this.imageGenerate = imageGenerate;
+    }
+
     public void learning() {
-        int no = 0;
         boolean f = true;
+        int c = 0;
         while (f) {
             f = false;
             for (int j = 0; j < n; j++) {
@@ -36,15 +45,19 @@ public class SvmImpl {
                     f = true;
                     int i = rand(j);
                     boolean u = update(i, j);
-                    if (!u) {
-                        no++;
+                    if (u) {
+                        c = 0;
                     } else {
-                        no = 0;
+                        c++;
                     }
                 }
             }
-            if (no > 1000) return;
+            if (c > 100000) {
+                break;
+            }
         }
+        imageGenerate.accept("test%d.png");
+        System.out.printf("learning finished. %d update done.\n", count);
     }
 
     public double y(int i) {
@@ -55,10 +68,18 @@ public class SvmImpl {
         return ans + b();
     }
 
+    public double y(double x, double y) {
+        double ans = 0;
+        for (int j = 0; j < n; j++) {
+            ans += aa[j] * tt[j] * innerP(x, y, j);
+        }
+        return ans + b();
+    }
+
     public double b() {
         List<Pair<Double, Integer>> list = new ArrayList<>();
         for (int i = 0; i < n; i++) {
-            if (aa[i] != 0) {
+            if (0 < aa[i] && aa[i] < C) {
                 list.add(new ImmutablePair(aa[i], i));
             }
         }
@@ -88,14 +109,24 @@ public class SvmImpl {
     }
 
     private boolean kktVio(int i) {
-        return (aa[i] > 0.00000001 && tt[i] * y(i) != 1) || (aa[i] < 0.00000001 && tt[i] * y(i) < 1);
+        if (aa[i] == 0 && tt[i] * y(i) < 1) {
+            return true;
+        }
+        if ((aa[i] > 0 && aa[i] < C) && tt[i] * y(i) != 1) {
+            return true;
+        }
+        if (aa[i] == C && tt[i] * y(i) > 1) {
+            return true;
+        }
+
+        return false;
     }
 
-    public int rand(int i) {
+    public int rand(int j) {
         Random rnd = new Random();
         while (true) {
-            int ran = rnd.nextInt(n);
-            if (ran != i) return ran;
+            int i = rnd.nextInt(n);
+            if (i != j) return i;
         }
     }
 
@@ -109,20 +140,22 @@ public class SvmImpl {
             L = Math.max(0, aa[j] + aa[i] - C);
             H = Math.max(C, aa[j] + aa[i]);
         }
-
-        double ajNew = aa[j] + tt[j] * (e(i) - e(j)) / (innerP(i, i) - 2 * innerP(i, j) + innerP(j, j));
+        double ajNew = aa[j] + (tt[j] * (e(i) - e(j))) / (innerP(i, i) - 2 * innerP(i, j) + innerP(j, j));
         if (ajNew < L) {
             ajNew = L;
         } else if (ajNew > H) {
             ajNew = H;
         }
+
+        if (Math.abs(aa[j] - ajNew) < 0.0000000000001) {
+            return false;
+        }
         double aiNew = aa[i] + tt[i] * tt[j] * (aa[j] - ajNew);
-        if (ajNew - aa[j] < 0.0000001 || Double.isNaN(ajNew)) {
+        if (Double.isNaN(ajNew) || aiNew < 0) {
             return false;
         }
         aa[j] = ajNew;
         aa[i] = aiNew;
-
         return true;
     }
 
@@ -145,5 +178,21 @@ public class SvmImpl {
         } else {
             return -1;
         }
+    }
+
+    public List<Data> getBoundaryData() {
+        List<Data> data = new ArrayList<>();
+        for (double i = 0.0; i < 1.0; i += 0.005) {
+            for (double j = 0.0; j < 1.0; j += 0.005) {
+                if (y(i, j) * y(i + 0.005, j + 0.005) <= 0) {
+                    Data d = new Data();
+                    d.x = i;
+                    d.y = j;
+                    data.add(d);
+                }
+            }
+        }
+
+        return data;
     }
 }
