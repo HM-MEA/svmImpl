@@ -11,7 +11,7 @@ import java.util.function.Consumer;
 
 public class SvmImpl {
 
-    final int C = 1000;
+    final int C = Integer.MAX_VALUE;
     final int n;
     final double[] xx;
     final double[] yy;
@@ -56,14 +56,14 @@ public class SvmImpl {
                 break;
             }
         }
-        imageGenerate.accept("test%d.png");
+        imageGenerate.accept("test.png");
         System.out.printf("learning finished. %d update done.\n", count);
     }
 
     public double y(int i) {
         double ans = 0;
         for (int j = 0; j < n; j++) {
-            ans += aa[j] * tt[j] * innerP(i, j);
+            ans += aa[j] * tt[j] * k(i, j);
         }
         return ans + b();
     }
@@ -71,7 +71,7 @@ public class SvmImpl {
     public double y(double x, double y) {
         double ans = 0;
         for (int j = 0; j < n; j++) {
-            ans += aa[j] * tt[j] * innerP(x, y, j);
+            ans += aa[j] * tt[j] * k(x, y, j);
         }
         return ans + b();
     }
@@ -91,7 +91,7 @@ public class SvmImpl {
             double tmp = 0;
             for (Pair<Double, Integer> m : list) {
                 int mi = m.getRight();
-                tmp += m.getLeft() * tt[mi] * innerP(ni, mi);
+                tmp += m.getLeft() * tt[mi] * k(ni, mi);
             }
 
             b += tt[ni] - tmp;
@@ -100,11 +100,11 @@ public class SvmImpl {
         return b / list.size();
     }
 
-    private double innerP(int i, int j) {
+    private double k(int i, int j) {
         return xx[i] * xx[j] + yy[i] * yy[j];
     }
 
-    private double innerP(double x, double y, int i) {
+    private double k(double x, double y, int i) {
         return x * xx[i] + y * yy[i];
     }
 
@@ -140,7 +140,7 @@ public class SvmImpl {
             L = Math.max(0, aa[j] + aa[i] - C);
             H = Math.max(C, aa[j] + aa[i]);
         }
-        double ajNew = aa[j] + (tt[j] * (e(i) - e(j))) / (innerP(i, i) - 2 * innerP(i, j) + innerP(j, j));
+        double ajNew = aa[j] + (tt[j] * (e(i) - e(j))) / (k(i, i) - 2 * k(i, j) + k(j, j));
         if (ajNew < L) {
             ajNew = L;
         } else if (ajNew > H) {
@@ -156,13 +156,14 @@ public class SvmImpl {
         }
         aa[j] = ajNew;
         aa[i] = aiNew;
+        count++;
         return true;
     }
 
     public double e(int i) {
         double ans = 0;
         for (int j = 0; j < n; j++) {
-            ans += aa[j] * tt[j] * innerP(i, j);
+            ans += aa[j] * tt[j] * k(i, j);
         }
         return ans - tt[i];
     }
@@ -170,7 +171,7 @@ public class SvmImpl {
     public int test(double x, double y) {
         double ans = 0;
         for (int j = 0; j < n; j++) {
-            ans += aa[j] * tt[j] * innerP(x, y, j);
+            ans += aa[j] * tt[j] * k(x, y, j);
         }
         ans = ans + b();
         if (ans >= 0) {
