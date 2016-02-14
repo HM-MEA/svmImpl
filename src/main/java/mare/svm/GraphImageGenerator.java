@@ -42,9 +42,9 @@ public class GraphImageGenerator {
                 false);
         XYPlot plot = (XYPlot) chart.getPlot();
         ValueAxis rangeAxis = plot.getRangeAxis();
-        rangeAxis.setRange(0, 1.1);
+        rangeAxis.setRange(0, 1.5);
         ValueAxis domainAxis = plot.getDomainAxis();
-        domainAxis.setRange(0, 1.1);
+        domainAxis.setRange(0, 1.5);
 
         try {
             ChartUtilities.saveChartAsPNG(new File("file/" + fileName), chart, 600, 600);
