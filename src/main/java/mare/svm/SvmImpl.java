@@ -3,11 +3,9 @@ package mare.svm;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 
 public class SvmImpl {
 
@@ -17,6 +15,8 @@ public class SvmImpl {
     final double[] yy;
     final int[] tt;
     double[] aa;
+    private final Random rnd;
+
 
     int count = 0;
 
@@ -29,6 +29,7 @@ public class SvmImpl {
         n = xx.length;
         aa = new double[n];
         Arrays.fill(aa, 0);
+        rnd = new Random();
     }
 
     public void setImageGenerate(Consumer<String> imageGenerate) {
@@ -43,8 +44,16 @@ public class SvmImpl {
             for (int j = 0; j < n; j++) {
                 if (kktVio(j)) {
                     f = true;
-                    int i = rand(j);
-                    boolean u = update(i, j);
+                    boolean u = false;
+                    if (selectP21(j).isPresent()) {
+                        int i = selectP21(j).getAsInt();
+                        u = update(i, j);
+                    }
+                    if (!u) {
+                        int i = selectP22(j);
+                        u = update(i, j);
+                    }
+
                     if (u) {
                         c = 0;
                     } else {
@@ -122,8 +131,21 @@ public class SvmImpl {
         return false;
     }
 
+    /**
+     * 2点目選択その1
+     */
+    private OptionalInt selectP21(int j) {
+        return IntStream.range(0, n).filter(i -> i != j).filter(i -> aa[i] > 0).findAny();
+    }
+
+    /**
+     * 2点目選択その2
+     */
+    private int selectP22(int j) {
+        return rand(j);
+    }
+
     public int rand(int j) {
-        Random rnd = new Random();
         while (true) {
             int i = rnd.nextInt(n);
             if (i != j) return i;
